@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Stepper } from '../components/Stepper'
 import { useTimer } from '../hooks/useTimer'
+import { useWakeLock } from '../hooks/useWakeLock'
 import {
   formatDate,
   formatDuration,
@@ -13,9 +15,11 @@ const DEFAULT_WORK = 45
 const DEFAULT_REST = 90
 
 export function SessionPage() {
+  const navigate = useNavigate()
   const { data, activeSession, addSet, removeSet, finishSession, abandonSession, updateActiveSession } =
     useApp()
   const timer = useTimer()
+  useWakeLock(timer.running)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [reps, setReps] = useState(10)
   const [weight, setWeight] = useState(40)
@@ -48,7 +52,7 @@ export function SessionPage() {
 
   if (!activeSession) {
     return (
-      <section className="rise" style={{ paddingTop: 48 }}>
+      <section className="rise session-idle">
         <div className="page-header">
           <p className="eyebrow">Сессия</p>
           <h1>Готово к старту</h1>
@@ -74,12 +78,11 @@ export function SessionPage() {
     )
   }
 
+  const durationTarget = timer.mode === 'work' ? workSeconds : restSeconds
   const progress =
-    timer.mode === 'idle' || !timer.remaining
+    timer.mode === 'idle' || !timer.remaining || durationTarget <= 0
       ? 0
-      : timer.mode === 'work'
-        ? ((workSeconds - timer.remaining) / workSeconds) * 100
-        : ((restSeconds - timer.remaining) / restSeconds) * 100
+      : ((durationTarget - timer.remaining) / durationTarget) * 100
 
   const saveSet = () => {
     addSet(current.exerciseId, {
@@ -89,6 +92,19 @@ export function SessionPage() {
       restSeconds,
     })
     timer.start('rest', restSeconds)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const toggleTimerTap = () => {
+    if (timer.running) {
+      timer.pause()
+      return
+    }
+    if (timer.mode !== 'idle') {
+      timer.resume()
+      return
+    }
+    timer.start('work', workSeconds)
   }
 
   const availableToAdd = data.exercises.filter(
@@ -98,6 +114,7 @@ export function SessionPage() {
   const addExerciseToSession = () => {
     const exercise = data.exercises.find((e) => e.id === customExerciseId)
     if (!exercise) return
+    const nextIndex = activeSession.exercises.length
     updateActiveSession((session) => ({
       ...session,
       exercises: [
@@ -111,37 +128,52 @@ export function SessionPage() {
       ],
     }))
     setCustomExerciseId('')
-    setExerciseIndex(activeSession.exercises.length)
+    setExerciseIndex(nextIndex)
+  }
+
+  const completeWorkout = () => {
+    timer.reset()
+    finishSession()
+    navigate('/stats')
   }
 
   return (
-    <section className="rise">
+    <section className="rise session-active">
       <div className="page-header">
         <p className="eyebrow">
           {activeSession.programName} · {activeSession.dayName}
         </p>
-        <h1>{current.exerciseName}</h1>
+        <h1 className="exercise-title">{current.exerciseName}</h1>
         <p className="muted tiny">
           Упражнение {exerciseIndex + 1} из {activeSession.exercises.length}
         </p>
       </div>
 
-      <div
+      <button
+        type="button"
         className="timer-ring"
         data-mode={timer.mode}
         style={{ ['--progress' as string]: Math.max(0, Math.min(100, progress)) }}
+        onClick={toggleTimerTap}
+        aria-label={
+          timer.running
+            ? 'Пауза таймера'
+            : timer.mode !== 'idle'
+              ? 'Продолжить таймер'
+              : 'Старт работы'
+        }
       >
         <div>
           <strong>{formatDuration(timer.mode === 'idle' ? workSeconds : timer.remaining)}</strong>
           <small>
-            {timer.mode === 'work' && 'Работа'}
-            {timer.mode === 'rest' && 'Отдых'}
-            {timer.mode === 'idle' && 'Таймер готов'}
+            {timer.mode === 'work' && (timer.running ? 'Работа · тап = пауза' : 'Пауза · тап = далее')}
+            {timer.mode === 'rest' && (timer.running ? 'Отдых · тап = пауза' : 'Пауза · тап = далее')}
+            {timer.mode === 'idle' && 'Тап = старт работы'}
           </small>
         </div>
-      </div>
+      </button>
 
-      <div className="row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div className="timer-actions">
         <button
           className="btn btn-secondary"
           type="button"
@@ -156,27 +188,18 @@ export function SessionPage() {
         >
           Отдых
         </button>
-        {timer.running ? (
-          <button className="btn btn-ghost" type="button" onClick={timer.pause}>
-            Пауза
-          </button>
-        ) : timer.mode !== 'idle' ? (
-          <button className="btn btn-ghost" type="button" onClick={timer.resume}>
-            Далее
-          </button>
-        ) : null}
-        <button className="btn btn-ghost" type="button" onClick={timer.reset}>
+        <button className="btn btn-secondary" type="button" onClick={timer.reset}>
           Сброс
         </button>
       </div>
 
       {history && (
-        <div className="panel rise rise-delay-1" style={{ marginTop: 18 }}>
-          <div className="row-between">
+        <div className="panel rise rise-delay-1" style={{ marginTop: 16 }}>
+          <div className="row-between wrap">
             <strong>Прошлые результаты</strong>
             <span className="chip chip-muted">{formatDate(history.lastSessionDate)}</span>
           </div>
-          <div className="row" style={{ flexWrap: 'wrap', marginTop: 10, gap: 8 }}>
+          <div className="chip-row">
             <span className="chip">Лучший вес {formatKg(history.bestWeightKg)}</span>
             <span className="chip">Макс. повторы {history.bestReps ?? '—'}</span>
             <span className="chip chip-muted">
@@ -189,7 +212,7 @@ export function SessionPage() {
               {history.lastSets.map((set, i) => (
                 <div key={set.id} className="history-set">
                   <span>Подход {i + 1}</span>
-                  <span>
+                  <span className="history-set-values">
                     {set.reps} повт.
                     {set.weightKg != null ? ` × ${formatKg(set.weightKg)}` : ''}
                     <span className="muted"> · отдых {formatDuration(set.restSeconds)}</span>
@@ -207,69 +230,50 @@ export function SessionPage() {
 
       <h2 className="section-title">Записать подход</h2>
       <div className="field-grid">
-        <div className="field">
-          <label htmlFor="reps">Повторы</label>
-          <input
-            id="reps"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={reps}
-            onChange={(e) => setReps(Number(e.target.value) || 0)}
-          />
-        </div>
+        <Stepper id="reps" label="Повторы" value={reps} min={1} step={1} onChange={setReps} />
         {current.usesWeight ? (
-          <div className="field">
-            <label htmlFor="weight">Вес, кг</label>
-            <input
-              id="weight"
-              type="number"
-              min={0}
-              step={0.5}
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => setWeight(Number(e.target.value) || 0)}
-            />
-          </div>
+          <Stepper
+            id="weight"
+            label="Вес, кг"
+            value={weight}
+            min={0}
+            step={2.5}
+            onChange={setWeight}
+          />
         ) : (
           <div className="field">
             <label>Вес</label>
             <input value="Свой вес" disabled />
           </div>
         )}
-        <div className="field">
-          <label htmlFor="work">Работа, сек</label>
-          <input
-            id="work"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={workSeconds}
-            onChange={(e) => setWorkSeconds(Number(e.target.value) || 0)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="rest">Отдых, сек</label>
-          <input
-            id="rest"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            value={restSeconds}
-            onChange={(e) => setRestSeconds(Number(e.target.value) || 0)}
-          />
-        </div>
+        <Stepper
+          id="work"
+          label="Работа, сек"
+          value={workSeconds}
+          min={5}
+          step={5}
+          onChange={setWorkSeconds}
+        />
+        <Stepper
+          id="rest"
+          label="Отдых, сек"
+          value={restSeconds}
+          min={5}
+          step={5}
+          onChange={setRestSeconds}
+        />
       </div>
 
-      <button
-        className="btn btn-primary btn-block"
-        style={{ marginTop: 12 }}
-        type="button"
-        disabled={reps <= 0 || workSeconds <= 0 || restSeconds <= 0}
-        onClick={saveSet}
-      >
-        Сохранить подход и отдых
-      </button>
+      <div className="gym-dock" role="region" aria-label="Быстрые действия">
+        <button
+          className="btn btn-primary btn-block"
+          type="button"
+          disabled={reps <= 0 || workSeconds <= 0 || restSeconds <= 0}
+          onClick={saveSet}
+        >
+          Сохранить подход и отдых
+        </button>
+      </div>
 
       <div className="set-list" style={{ marginTop: 16 }}>
         {current.sets.length === 0 && (
@@ -288,7 +292,7 @@ export function SessionPage() {
               </div>
             </div>
             <button
-              className="btn btn-ghost"
+              className="btn btn-ghost btn-icon"
               type="button"
               aria-label="Удалить подход"
               onClick={() => removeSet(current.exerciseId, set.id)}
@@ -299,9 +303,9 @@ export function SessionPage() {
         ))}
       </div>
 
-      <div className="row" style={{ marginTop: 18 }}>
+      <div className="nav-pair" style={{ marginTop: 18 }}>
         <button
-          className="btn btn-secondary"
+          className="btn btn-secondary btn-block"
           type="button"
           disabled={exerciseIndex === 0}
           onClick={() => setExerciseIndex((i) => Math.max(0, i - 1))}
@@ -309,7 +313,7 @@ export function SessionPage() {
           Назад
         </button>
         <button
-          className="btn btn-secondary"
+          className="btn btn-secondary btn-block"
           type="button"
           disabled={exerciseIndex >= activeSession.exercises.length - 1}
           onClick={() =>
@@ -342,8 +346,8 @@ export function SessionPage() {
         </div>
 
         {availableToAdd.length > 0 && (
-          <div className="field-grid" style={{ marginTop: 12 }}>
-            <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <div className="stack" style={{ marginTop: 12 }}>
+            <div className="field">
               <label htmlFor="add-ex">Добавить упражнение</label>
               <select
                 id="add-ex"
@@ -360,7 +364,6 @@ export function SessionPage() {
             </div>
             <button
               className="btn btn-secondary btn-block"
-              style={{ gridColumn: '1 / -1' }}
               type="button"
               disabled={!customExerciseId}
               onClick={addExerciseToSession}
@@ -372,14 +375,7 @@ export function SessionPage() {
       </div>
 
       <div className="stack" style={{ marginTop: 18 }}>
-        <button
-          className="btn btn-primary btn-block"
-          type="button"
-          onClick={() => {
-            timer.reset()
-            finishSession()
-          }}
-        >
+        <button className="btn btn-primary btn-block" type="button" onClick={completeWorkout}>
           Завершить тренировку
         </button>
         <button

@@ -221,7 +221,13 @@ function ProgramEditor({
                       key={exercise.id}
                       type="button"
                       className="row"
-                      style={{ justifyContent: 'flex-start', textAlign: 'left' }}
+                      style={{
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        minHeight: 48,
+                        width: '100%',
+                        padding: '8px 4px',
+                      }}
                       onClick={() => toggleExercise(day.id, exercise.id)}
                     >
                       <span className={`check ${on ? 'on' : ''}`}>{on ? '✓' : ''}</span>
