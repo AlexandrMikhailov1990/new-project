@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { ProgramsPage } from './pages/ProgramsPage'
@@ -9,7 +9,8 @@ import { AppProvider } from './store/AppContext'
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
+      {/* HashRouter: работает на GitHub Pages / любом статическом хостинге без rewrite */}
+      <HashRouter>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
@@ -19,7 +20,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AppProvider>
   )
 }

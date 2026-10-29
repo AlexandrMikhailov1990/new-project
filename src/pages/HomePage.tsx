@@ -50,6 +50,11 @@ export function HomePage() {
           </p>
         )}
       </div>
+
+      <p className="tiny muted rise rise-delay-3" style={{ marginTop: 8, lineHeight: 1.4 }}>
+        В зале без Wi‑Fi: откройте сайт один раз по мобильной сети, затем «На экран Домой» —
+        дальше приложение работает офлайн на этом телефоне.
+      </p>
     </section>
   )
 }
