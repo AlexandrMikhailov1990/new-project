@@ -2,11 +2,10 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Локально: `/`. GitHub Pages: `VITE_BASE=/new-project/ npm run build`
-const base = process.env.VITE_BASE ?? '/'
-
-export default defineConfig({
-  base,
+// Dev: `/`. Production: relative `./` so the same build works on GitHub Pages,
+// jsDelivr, or any static host. Override with VITE_BASE if needed.
+export default defineConfig(({ command }) => ({
+  base: process.env.VITE_BASE ?? (command === 'build' ? './' : '/'),
   plugins: [
     react(),
     VitePWA({
@@ -65,4 +64,4 @@ export default defineConfig({
     host: true,
     port: 4173,
   },
-})
+}))

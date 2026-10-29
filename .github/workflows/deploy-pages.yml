@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Always publish the classic gh-pages branch (works once Pages → Deploy from branch is set).
+  publish-branch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,20 +25,36 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Build for GitHub Pages
-        env:
-          VITE_BASE: /new-project/
-        run: npm run build
+      - run: npm run build
+      - name: Publish gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
+
+  # Optional Actions-based Pages (Settings → Pages → Source: GitHub Actions).
+  build-actions-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  deploy:
-    needs: build
+  deploy-actions-pages:
+    needs: build-actions-pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    continue-on-error: true
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
