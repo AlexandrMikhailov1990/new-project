@@ -5,18 +5,19 @@ on:
     branches: [main, cursor/gym-workout-app-3157]
   workflow_dispatch:
 
+# Publishes a static build to the gh-pages branch.
+# Enable hosting once in the repo: Settings → Pages → Deploy from a branch → gh-pages.
+# Does NOT use actions/deploy-pages (that requires Pages to already be enabled and fails CI otherwise).
+
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-branch
   cancel-in-progress: true
 
 jobs:
-  # Always publish the classic gh-pages branch (works once Pages → Deploy from branch is set).
-  publish-branch:
+  publish-gh-pages:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,29 +33,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: true
-
-  # Optional Actions-based Pages (Settings → Pages → Source: GitHub Actions).
-  build-actions-pages:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy-actions-pages:
-    needs: build-actions-pages
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    continue-on-error: true
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4

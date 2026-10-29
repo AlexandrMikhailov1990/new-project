@@ -12,12 +12,13 @@
 
 1. GitHub → **Settings → General → Danger Zone → Change visibility → Public**  
    *(на бесплатном плане Pages для private обычно недоступны)*
-2. **Settings → Pages** → Source: **Deploy from a branch** → Branch **`gh-pages`** / root → Save
+2. **Settings → Pages** → Source: **Deploy from a branch** → Branch **`gh-pages`** / root → Save  
+   CI workflow только обновляет ветку `gh-pages` (не падает, если Pages ещё не включены).
 3. Откройте на телефоне: **https://alexandrmikhailov1990.github.io/new-project/**
 4. Chrome/Safari → «На экран Домой» / «Установить приложение»
 5. В зале запускайте с иконки — сеть не обязательна
 
-Обновить сайт после правок:
+Обновить сайт после правок (или дождитесь CI push):
 
 ```bash
 npm install
