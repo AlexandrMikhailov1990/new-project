@@ -59,9 +59,12 @@ export default defineConfig(({ command }) => ({
   server: {
     host: true,
     port: 5173,
+    // Cloudflare / LAN tunnels send a non-localhost Host header
+    allowedHosts: true,
   },
   preview: {
     host: true,
     port: 4173,
+    allowedHosts: true,
   },
 }))
