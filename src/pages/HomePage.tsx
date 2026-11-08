@@ -1,10 +1,16 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { completedSessions, formatDate, sessionVolume } from '../lib/stats'
 import { useApp } from '../store/AppContext'
 
 export function HomePage() {
-  const { data, activeSession } = useApp()
+  const navigate = useNavigate()
+  const { data, activeSession, startFreeSession } = useApp()
   const recent = completedSessions(data.sessions)[0]
+
+  const beginFree = () => {
+    startFreeSession()
+    navigate('/session')
+  }
 
   return (
     <section className="hero-home">
@@ -14,7 +20,7 @@ export function HomePage() {
           Тренажёр<span>.</span>
         </h1>
         <p className="lede">
-          Выберите программу, фиксируйте подходы и отдыхайте по таймеру — прогресс видно сразу.
+          Свободная сессия или программа: подходы, таймер и прогресс — всё на телефоне.
         </p>
       </div>
 
@@ -24,9 +30,14 @@ export function HomePage() {
             Продолжить: {activeSession.dayName}
           </Link>
         ) : (
-          <Link className="btn btn-primary btn-block" to="/programs">
-            Начать тренировку
-          </Link>
+          <>
+            <button className="btn btn-primary btn-block" type="button" onClick={beginFree}>
+              Свободная тренировка
+            </button>
+            <Link className="btn btn-secondary btn-block" to="/programs">
+              По программе
+            </Link>
+          </>
         )}
         <Link className="btn btn-secondary btn-block" to="/stats">
           Смотреть прогресс
@@ -36,7 +47,7 @@ export function HomePage() {
       <div className="panel rise rise-delay-2">
         <div className="row-between">
           <strong>Последняя тренировка</strong>
-          <span className="chip chip-muted">{data.programs.length} программ</span>
+          <span className="chip chip-muted">{data.exercises.length} упражнений</span>
         </div>
         {recent ? (
           <p className="muted" style={{ margin: '10px 0 0' }}>
@@ -50,11 +61,6 @@ export function HomePage() {
           </p>
         )}
       </div>
-
-      <p className="tiny muted rise rise-delay-3" style={{ marginTop: 8, lineHeight: 1.4 }}>
-        В зале без компа: откройте опубликованный сайт по мобильной сети один раз, затем
-        «На экран Домой» — дальше работает офлайн на этом телефоне (см. README).
-      </p>
     </section>
   )
 }

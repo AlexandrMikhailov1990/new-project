@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ExercisePicker } from '../components/ExercisePicker'
 import { createId } from '../lib/id'
 import { useApp } from '../store/AppContext'
 import type { Exercise, Program, ProgramDay } from '../types'
 
 export function ProgramsPage() {
-  const { data, startSession, upsertProgram, deleteProgram, addExercise } = useApp()
+  const { data, startSession, startFreeSession, upsertProgram, deleteProgram, addExercise } =
+    useApp()
   const navigate = useNavigate()
   const [editing, setEditing] = useState<Program | null>(null)
   const [creating, setCreating] = useState(false)
@@ -22,6 +24,18 @@ export function ProgramsPage() {
         <h1>Выберите день</h1>
         <p className="muted">Стартовые сплиты можно править и дополнять своими упражнениями.</p>
       </div>
+
+      <button
+        className="btn btn-primary btn-block"
+        style={{ marginTop: 12 }}
+        type="button"
+        onClick={() => {
+          startFreeSession()
+          navigate('/session')
+        }}
+      >
+        Свободная тренировка
+      </button>
 
       <div className="stack" style={{ marginTop: 16 }}>
         {data.programs.map((program, index) => (
@@ -213,34 +227,20 @@ function ProgramEditor({
                   }
                 />
               </div>
-              <div className="stack" style={{ marginTop: 10, maxHeight: 180, overflow: 'auto' }}>
-                {exercises.map((exercise) => {
-                  const on = day.exerciseIds.includes(exercise.id)
-                  return (
-                    <button
-                      key={exercise.id}
-                      type="button"
-                      className="row"
-                      style={{
-                        justifyContent: 'flex-start',
-                        textAlign: 'left',
-                        minHeight: 48,
-                        width: '100%',
-                        padding: '8px 4px',
-                      }}
-                      onClick={() => toggleExercise(day.id, exercise.id)}
-                    >
-                      <span className={`check ${on ? 'on' : ''}`}>{on ? '✓' : ''}</span>
-                      <span>
-                        {exercise.name}
-                        <span className="muted tiny"> · {exercise.muscleGroup}</span>
-                      </span>
-                    </button>
-                  )
-                })}
+              <div style={{ marginTop: 10 }}>
+                <ExercisePicker
+                  exercises={exercises}
+                  multi
+                  selectedIds={day.exerciseIds}
+                  onToggle={(id) => toggleExercise(day.id, id)}
+                  title="Поиск упражнений"
+                  maxHeight={220}
+                />
               </div>
               <p className="tiny muted" style={{ margin: '8px 0 0' }}>
-                Выбрано: {day.exerciseIds.map((id) => exerciseMap.get(id)?.name).filter(Boolean).join(', ') || '—'}
+                Выбрано:{' '}
+                {day.exerciseIds.map((id) => exerciseMap.get(id)?.name).filter(Boolean).join(', ') ||
+                  '—'}
               </p>
             </div>
           ))}

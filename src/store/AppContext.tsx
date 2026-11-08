@@ -24,6 +24,7 @@ type AppContextValue = {
   deleteProgram: (programId: string) => void
   addExercise: (exercise: Omit<Exercise, 'id'> & { id?: string }) => Exercise
   startSession: (program: Program, day: ProgramDay) => WorkoutSession
+  startFreeSession: () => WorkoutSession
   updateActiveSession: (updater: (session: WorkoutSession) => WorkoutSession) => void
   addSet: (exerciseId: string, set: Omit<SetRecord, 'id' | 'completedAt'>) => void
   removeSet: (exerciseId: string, setId: string) => void
@@ -33,6 +34,13 @@ type AppContextValue = {
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
+
+function abandonActives(sessions: WorkoutSession[]): WorkoutSession[] {
+  const now = new Date().toISOString()
+  return sessions.map((s) =>
+    s.status === 'active' ? { ...s, status: 'abandoned' as const, finishedAt: now } : s,
+  )
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => loadAppData())
@@ -105,12 +113,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       setData((prev) => ({
         ...prev,
-        sessions: [
-          ...prev.sessions.map((s) =>
-            s.status === 'active' ? { ...s, status: 'abandoned' as const, finishedAt: new Date().toISOString() } : s,
-          ),
-          session,
-        ],
+        sessions: [...abandonActives(prev.sessions), session],
+      }))
+
+      return session
+    }
+
+    const startFreeSession = (): WorkoutSession => {
+      const session: WorkoutSession = {
+        id: createId('session'),
+        programId: 'free',
+        programName: 'Свободная',
+        dayId: 'free',
+        dayName: 'Без программы',
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+        exercises: [],
+        status: 'active',
+      }
+
+      setData((prev) => ({
+        ...prev,
+        sessions: [...abandonActives(prev.sessions), session],
       }))
 
       return session
@@ -183,6 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteProgram,
       addExercise,
       startSession,
+      startFreeSession,
       updateActiveSession,
       addSet,
       removeSet,

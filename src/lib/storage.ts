@@ -1,4 +1,4 @@
-import { createSeedData } from '../data/seed'
+import { createSeedData, mergeSeedExercises, SEED_PROGRAMS } from '../data/seed'
 import type { AppData } from '../types'
 
 const STORAGE_KEY = 'trenazher-app-v1'
@@ -11,10 +11,12 @@ export function loadAppData(): AppData {
     if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.programs)) {
       return createSeedData()
     }
+    const programs =
+      parsed.programs.length > 0 ? parsed.programs : structuredClone(SEED_PROGRAMS)
     return {
       version: 1,
-      exercises: parsed.exercises ?? [],
-      programs: parsed.programs ?? [],
+      exercises: mergeSeedExercises(parsed.exercises ?? []),
+      programs,
       sessions: parsed.sessions ?? [],
     }
   } catch {

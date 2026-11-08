@@ -4,6 +4,7 @@ import { HomePage } from './pages/HomePage'
 import { ProgramsPage } from './pages/ProgramsPage'
 import { SessionPage } from './pages/SessionPage'
 import { StatsPage } from './pages/StatsPage'
+import { WorkoutDetailPage } from './pages/WorkoutDetailPage'
 import { AppProvider } from './store/AppContext'
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
             <Route path="programs" element={<ProgramsPage />} />
             <Route path="session" element={<SessionPage />} />
             <Route path="stats" element={<StatsPage />} />
+            <Route path="stats/:sessionId" element={<WorkoutDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

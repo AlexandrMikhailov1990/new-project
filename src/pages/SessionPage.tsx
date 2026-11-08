@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ExercisePicker } from '../components/ExercisePicker'
 import { Stepper } from '../components/Stepper'
 import { useTimer } from '../hooks/useTimer'
 import { useWakeLock } from '../hooks/useWakeLock'
@@ -10,14 +11,23 @@ import {
   getExerciseHistory,
 } from '../lib/stats'
 import { useApp } from '../store/AppContext'
+import type { Exercise } from '../types'
 
 const DEFAULT_WORK = 45
 const DEFAULT_REST = 90
 
 export function SessionPage() {
   const navigate = useNavigate()
-  const { data, activeSession, addSet, removeSet, finishSession, abandonSession, updateActiveSession } =
-    useApp()
+  const {
+    data,
+    activeSession,
+    addSet,
+    removeSet,
+    finishSession,
+    abandonSession,
+    updateActiveSession,
+    startFreeSession,
+  } = useApp()
   const timer = useTimer()
   useWakeLock(timer.running)
   const [exerciseIndex, setExerciseIndex] = useState(0)
@@ -25,7 +35,7 @@ export function SessionPage() {
   const [weight, setWeight] = useState(40)
   const [workSeconds, setWorkSeconds] = useState(DEFAULT_WORK)
   const [restSeconds, setRestSeconds] = useState(DEFAULT_REST)
-  const [customExerciseId, setCustomExerciseId] = useState('')
+  const [showPicker, setShowPicker] = useState(false)
 
   const current = activeSession?.exercises[exerciseIndex]
 
@@ -50,19 +60,32 @@ export function SessionPage() {
     }
   }, [current?.exerciseId])
 
+  const beginFree = () => {
+    startFreeSession()
+    setExerciseIndex(0)
+    setShowPicker(true)
+    navigate('/session')
+  }
+
   if (!activeSession) {
     return (
       <section className="rise session-idle">
         <div className="page-header">
           <p className="eyebrow">Сессия</p>
           <h1>Готово к старту</h1>
-          <p className="lede">Выберите день программы — и можно фиксировать подходы с таймером.</p>
+          <p className="lede">
+            Свободная тренировка — без программы: выбирайте упражнения по ходу. Или возьмите день из
+            сплита.
+          </p>
         </div>
         <div className="stack" style={{ marginTop: 24 }}>
-          <Link className="btn btn-primary btn-block" to="/programs">
+          <button className="btn btn-primary btn-block" type="button" onClick={beginFree}>
+            Свободная тренировка
+          </button>
+          <Link className="btn btn-secondary btn-block" to="/programs">
             Выбрать программу
           </Link>
-          <Link className="btn btn-secondary btn-block" to="/stats">
+          <Link className="btn btn-ghost btn-block" to="/stats">
             Открыть статистику
           </Link>
         </div>
@@ -70,10 +93,76 @@ export function SessionPage() {
     )
   }
 
+  const addExerciseToSession = (exercise: Exercise) => {
+    if (activeSession.exercises.some((e) => e.exerciseId === exercise.id)) {
+      setShowPicker(false)
+      return
+    }
+    const nextIndex = activeSession.exercises.length
+    updateActiveSession((session) => ({
+      ...session,
+      exercises: [
+        ...session.exercises,
+        {
+          exerciseId: exercise.id,
+          exerciseName: exercise.name,
+          usesWeight: exercise.usesWeight,
+          sets: [],
+        },
+      ],
+    }))
+    setExerciseIndex(nextIndex)
+    setShowPicker(false)
+  }
+
+  if (activeSession.exercises.length === 0 || showPicker) {
+    return (
+      <section className="rise">
+        <div className="page-header">
+          <p className="eyebrow">
+            {activeSession.programName} · {activeSession.dayName}
+          </p>
+          <h1>{activeSession.exercises.length === 0 ? 'Добавьте упражнение' : 'Ещё упражнение'}</h1>
+          <p className="muted tiny">Поиск по любой части названия.</p>
+        </div>
+        <div className="panel" style={{ marginTop: 12 }}>
+          <ExercisePicker
+            exercises={data.exercises}
+            excludeIds={activeSession.exercises.map((e) => e.exerciseId)}
+            onPick={addExerciseToSession}
+            title="Каталог"
+            maxHeight="55vh"
+          />
+        </div>
+        {activeSession.exercises.length > 0 && (
+          <button
+            className="btn btn-secondary btn-block"
+            style={{ marginTop: 12 }}
+            type="button"
+            onClick={() => setShowPicker(false)}
+          >
+            Назад к сессии
+          </button>
+        )}
+        <button
+          className="btn btn-danger btn-block"
+          style={{ marginTop: 10 }}
+          type="button"
+          onClick={() => {
+            timer.reset()
+            abandonSession()
+          }}
+        >
+          Отменить сессию
+        </button>
+      </section>
+    )
+  }
+
   if (!current) {
     return (
       <section className="rise">
-        <div className="empty">В этой сессии нет упражнений.</div>
+        <div className="empty">Упражнение не выбрано.</div>
       </section>
     )
   }
@@ -105,30 +194,6 @@ export function SessionPage() {
       return
     }
     timer.start('work', workSeconds)
-  }
-
-  const availableToAdd = data.exercises.filter(
-    (e) => !activeSession.exercises.some((log) => log.exerciseId === e.id),
-  )
-
-  const addExerciseToSession = () => {
-    const exercise = data.exercises.find((e) => e.id === customExerciseId)
-    if (!exercise) return
-    const nextIndex = activeSession.exercises.length
-    updateActiveSession((session) => ({
-      ...session,
-      exercises: [
-        ...session.exercises,
-        {
-          exerciseId: exercise.id,
-          exerciseName: exercise.name,
-          usesWeight: exercise.usesWeight,
-          sets: [],
-        },
-      ],
-    }))
-    setCustomExerciseId('')
-    setExerciseIndex(nextIndex)
   }
 
   const completeWorkout = () => {
@@ -344,34 +409,14 @@ export function SessionPage() {
             </button>
           ))}
         </div>
-
-        {availableToAdd.length > 0 && (
-          <div className="stack" style={{ marginTop: 12 }}>
-            <div className="field">
-              <label htmlFor="add-ex">Добавить упражнение</label>
-              <select
-                id="add-ex"
-                value={customExerciseId}
-                onChange={(e) => setCustomExerciseId(e.target.value)}
-              >
-                <option value="">Выберите…</option>
-                {availableToAdd.map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
-                    {exercise.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              className="btn btn-secondary btn-block"
-              type="button"
-              disabled={!customExerciseId}
-              onClick={addExerciseToSession}
-            >
-              Добавить в сессию
-            </button>
-          </div>
-        )}
+        <button
+          className="btn btn-secondary btn-block"
+          style={{ marginTop: 12 }}
+          type="button"
+          onClick={() => setShowPicker(true)}
+        >
+          Добавить упражнение
+        </button>
       </div>
 
       <div className="stack" style={{ marginTop: 18 }}>

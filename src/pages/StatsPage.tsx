@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   completedSessions,
   formatDate,
@@ -9,7 +10,7 @@ import {
 import { useApp } from '../store/AppContext'
 
 export function StatsPage() {
-  const { data, deleteSession } = useApp()
+  const { data } = useApp()
   const history = completedSessions(data.sessions)
   const weekly = weeklyVolumeSeries(data.sessions, 8)
   const maxVolume = Math.max(...weekly.map((w) => w.volume), 1)
@@ -87,34 +88,19 @@ export function StatsPage() {
       ) : (
         <div className="stack">
           {history.map((session) => (
-            <article key={session.id} className="panel">
-              <div className="row-between">
-                <div>
-                  <strong style={{ fontFamily: 'var(--font-display)' }}>
-                    {session.programName}
-                  </strong>
-                  <p className="muted tiny" style={{ margin: '4px 0 0' }}>
-                    {session.dayName} · {formatDate(session.finishedAt)}
-                  </p>
-                </div>
-                <button
-                  className="btn btn-ghost"
-                  type="button"
-                  onClick={() => deleteSession(session.id)}
-                >
-                  Удалить
-                </button>
-              </div>
-              <p className="muted" style={{ margin: '10px 0 0' }}>
-                {sessionSetCount(session)} подходов · объём {Math.round(sessionVolume(session))} кг
+            <Link key={session.id} className="list-item" to={`/stats/${session.id}`}>
+              <strong>{session.programName}</strong>
+              <p>
+                {session.dayName} · {formatDate(session.finishedAt)} · {sessionSetCount(session)}{' '}
+                подходов · {Math.round(sessionVolume(session))} кг
               </p>
-              <div className="tiny muted" style={{ marginTop: 8 }}>
+              <p className="tiny muted" style={{ marginTop: 4 }}>
                 {session.exercises
                   .filter((e) => e.sets.length > 0)
                   .map((e) => e.exerciseName)
-                  .join(' · ')}
-              </div>
-            </article>
+                  .join(' · ') || 'Открыть детали'}
+              </p>
+            </Link>
           ))}
         </div>
       )}
