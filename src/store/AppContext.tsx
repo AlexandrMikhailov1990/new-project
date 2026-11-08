@@ -75,14 +75,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const addExercise = (exercise: Omit<Exercise, 'id'> & { id?: string }): Exercise => {
+      const trimmed = exercise.name.trim()
+      if (exercise.id) {
+        const byId = data.exercises.find((e) => e.id === exercise.id)
+        if (byId) return byId
+      }
+      const byName = data.exercises.find(
+        (e) => e.name.trim().toLowerCase() === trimmed.toLowerCase(),
+      )
+      if (byName) return byName
+
       const next: Exercise = {
         id: exercise.id ?? createId('ex'),
-        name: exercise.name,
-        muscleGroup: exercise.muscleGroup,
+        name: trimmed,
+        muscleGroup: exercise.muscleGroup.trim() || 'Своё',
         usesWeight: exercise.usesWeight,
       }
       setData((prev) => {
         if (prev.exercises.some((e) => e.id === next.id)) return prev
+        if (prev.exercises.some((e) => e.name.trim().toLowerCase() === next.name.toLowerCase())) {
+          return prev
+        }
         return { ...prev, exercises: [...prev.exercises, next] }
       })
       return next

@@ -27,6 +27,7 @@ export function SessionPage() {
     abandonSession,
     updateActiveSession,
     startFreeSession,
+    addExercise,
   } = useApp()
   const timer = useTimer()
   useWakeLock(timer.running)
@@ -130,8 +131,9 @@ export function SessionPage() {
             exercises={data.exercises}
             excludeIds={activeSession.exercises.map((e) => e.exerciseId)}
             onPick={addExerciseToSession}
+            onCreate={addExercise}
             title="Каталог"
-            maxHeight="55vh"
+            maxHeight="50vh"
           />
         </div>
         {activeSession.exercises.length > 0 && (

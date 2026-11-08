@@ -136,8 +136,6 @@ function ProgramEditor({
   onAddExercise: (exercise: Omit<Exercise, 'id'> & { id?: string }) => Exercise
 }) {
   const [draft, setDraft] = useState<Program>(structuredClone(program))
-  const [newExerciseName, setNewExerciseName] = useState('')
-  const [targetDayId, setTargetDayId] = useState(draft.days[0]?.id ?? '')
 
   const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises])
 
@@ -164,19 +162,6 @@ function ProgramEditor({
       exerciseIds: [],
     }
     setDraft((prev) => ({ ...prev, days: [...prev.days, day] }))
-    setTargetDayId(day.id)
-  }
-
-  const createExercise = () => {
-    const name = newExerciseName.trim()
-    if (!name || !targetDayId) return
-    const exercise = onAddExercise({
-      name,
-      muscleGroup: 'Своё',
-      usesWeight: true,
-    })
-    toggleExercise(targetDayId, exercise.id)
-    setNewExerciseName('')
   }
 
   return (
@@ -233,8 +218,9 @@ function ProgramEditor({
                   multi
                   selectedIds={day.exerciseIds}
                   onToggle={(id) => toggleExercise(day.id, id)}
-                  title="Поиск упражнений"
-                  maxHeight={220}
+                  onCreate={onAddExercise}
+                  title="Поиск / своё упражнение"
+                  maxHeight={200}
                 />
               </div>
               <p className="tiny muted" style={{ margin: '8px 0 0' }}>
@@ -247,30 +233,6 @@ function ProgramEditor({
 
           <button className="btn btn-secondary" type="button" onClick={addDay}>
             Добавить день
-          </button>
-
-          <div className="field-grid">
-            <div className="field">
-              <label>Новое упражнение</label>
-              <input
-                value={newExerciseName}
-                onChange={(e) => setNewExerciseName(e.target.value)}
-                placeholder="Название"
-              />
-            </div>
-            <div className="field">
-              <label>В день</label>
-              <select value={targetDayId} onChange={(e) => setTargetDayId(e.target.value)}>
-                {draft.days.map((day) => (
-                  <option key={day.id} value={day.id}>
-                    {day.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <button className="btn btn-secondary" type="button" onClick={createExercise}>
-            Добавить упражнение
           </button>
         </div>
 
